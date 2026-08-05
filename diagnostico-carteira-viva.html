@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico Carteira Viva</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F3EA;
+    --paper-2:#EFEADC;
+    --ink:#1F2937;
+    --ink-soft:#6B6355;
+    --forest:#232F24;
+    --forest-2:#2C3B2D;
+    --olive:#8AA624;
+    --olive-dark:#657A19;
+    --amber:#C97A2B;
+    --brick:#A23B2E;
+    --line:#D9D3C0;
+    --line-dark:#3E4A3B;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .screen{ min-height:100vh; display:none; flex-direction:column; }
+  .screen.active{ display:flex; }
+
+  /* ---------- shared ---------- */
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-weight:600;
+  }
+  .brand-mark{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    opacity:.72;
+  }
+  h1,h2,h3{ font-family:'Roboto Slab',serif; }
+  button{ font-family:inherit; cursor:pointer; border:none; }
+
+  /* ---------- INTRO ---------- */
+  #intro{
+    background:radial-gradient(120% 140% at 15% -10%, #33452F 0%, var(--forest) 55%, #1B241C 100%);
+    color:var(--paper);
+    justify-content:center;
+    align-items:center;
+    padding:8vh 6vw;
+    position:relative;
+    overflow:hidden;
+  }
+  #intro .pulse-bg{
+    position:absolute; inset:0; opacity:.15; pointer-events:none;
+  }
+  .intro-inner{ max-width:640px; position:relative; z-index:1; }
+  .intro-inner .eyebrow{ color:var(--olive); margin-bottom:22px; }
+  .intro-inner h1{
+    font-size:clamp(34px,5.4vw,58px);
+    line-height:1.05;
+    font-weight:900;
+    margin-bottom:22px;
+    letter-spacing:-.01em;
+  }
+  .intro-inner h1 em{ color:var(--olive); font-style:normal; }
+  .intro-inner p.lede{
+    font-size:18px;
+    line-height:1.55;
+    color:#D9D6C8;
+    max-width:520px;
+    margin-bottom:36px;
+  }
+  .meta-row{
+    display:flex; gap:28px; margin-bottom:40px;
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#B9C4A9;
+  }
+  .meta-row div{ display:flex; align-items:center; gap:8px; }
+  .dot{ width:6px; height:6px; border-radius:50%; background:var(--olive); display:inline-block; }
+
+  .btn-primary{
+    background:var(--olive);
+    color:#1B2413;
+    font-weight:700;
+    font-size:16px;
+    padding:16px 30px;
+    border-radius:3px;
+    letter-spacing:.01em;
+    transition:transform .15s ease, background .15s ease;
+  }
+  .btn-primary:hover{ background:#9AB92B; transform:translateY(-1px); }
+  .btn-primary:active{ transform:translateY(0); }
+
+  .intro-foot{
+    position:absolute; bottom:28px; left:6vw; right:6vw;
+    display:flex; justify-content:space-between; align-items:center;
+    color:#8A9480; font-size:12px;
+  }
+
+  /* ---------- QUESTION ---------- */
+  #question{
+    background:var(--paper);
+    justify-content:center;
+    align-items:center;
+    padding:6vh 6vw;
+  }
+  #capture{
+    background:var(--paper);
+    justify-content:center;
+    align-items:center;
+    padding:6vh 6vw;
+  }
+  .q-card{ width:100%; max-width:640px; }
+  .q-topline{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:10px;
+  }
+  .q-topline .eyebrow{ color:var(--olive-dark); }
+  .q-topline .progress-label{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);
+  }
+  .progress-track{
+    height:3px; background:var(--line); border-radius:2px; margin-bottom:44px; overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; background:var(--olive); width:0%;
+    transition:width .35s ease;
+  }
+  .q-text{
+    font-size:clamp(24px,3.4vw,32px);
+    line-height:1.28;
+    font-weight:700;
+    margin-bottom:38px;
+    max-width:560px;
+  }
+  .q-answers{ display:flex; gap:14px; margin-bottom:26px; }
+  .ans-btn{
+    flex:1;
+    background:transparent;
+    border:1.5px solid var(--line);
+    color:var(--ink);
+    font-size:16px;
+    font-weight:600;
+    padding:18px 20px;
+    border-radius:3px;
+    transition:all .15s ease;
+    text-align:left;
+    position:relative;
+  }
+  .ans-btn:hover{ border-color:var(--ink); }
+  .ans-btn.selected{
+    border-color:var(--olive-dark);
+    background:var(--olive);
+    color:#1B2413;
+  }
+  .ans-btn .k{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; opacity:.6; display:block; margin-bottom:4px;
+  }
+
+  .insight-box{
+    background:var(--paper-2);
+    border-left:3px solid var(--olive-dark);
+    padding:16px 20px;
+    font-size:14.5px;
+    line-height:1.5;
+    color:var(--ink);
+    margin-bottom:28px;
+    display:none;
+  }
+  .insight-box.show{ display:block; }
+  .insight-box b{ color:var(--olive-dark); }
+
+  .q-nav{ display:flex; justify-content:space-between; align-items:center; }
+  .link-btn{
+    background:none; color:var(--ink-soft); font-size:13.5px; font-weight:600;
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .link-btn:hover{ color:var(--ink); }
+  .btn-continue{
+    background:var(--ink); color:var(--paper); font-weight:700; font-size:14.5px;
+    padding:13px 26px; border-radius:3px; opacity:0; pointer-events:none;
+    transition:opacity .2s ease, background .15s ease;
+  }
+  .btn-continue.show{ opacity:1; pointer-events:auto; }
+  .btn-continue:hover{ background:var(--olive-dark); }
+
+  /* ---------- RESULTS ---------- */
+  #results{
+    background:radial-gradient(120% 140% at 85% -10%, #33452F 0%, var(--forest) 55%, #1B241C 100%);
+    color:var(--paper);
+    padding:7vh 6vw;
+  }
+  .res-inner{ max-width:760px; margin:0 auto; width:100%; }
+  .res-inner .eyebrow{ color:var(--olive); margin-bottom:18px; text-align:center; }
+
+  .score-block{ text-align:center; margin-bottom:8px; }
+  .score-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:clamp(64px,11vw,104px);
+    line-height:1;
+    letter-spacing:-.02em;
+  }
+  .score-band{
+    font-family:'Roboto Slab',serif;
+    font-weight:900;
+    font-size:clamp(24px,3.6vw,34px);
+    margin-top:6px;
+    margin-bottom:28px;
+  }
+
+  .pulse-wrap{ margin:0 auto 34px; max-width:560px; }
+  .pulse-wrap svg{ width:100%; height:auto; display:block; }
+
+  .verdict{
+    font-size:17px; line-height:1.6; color:#DEDBCE;
+    max-width:560px; margin:0 auto 44px; text-align:center;
+  }
+
+  .blocks-grid{
+    display:grid; grid-template-columns:1fr; gap:16px;
+    max-width:560px; margin:0 auto 44px;
+  }
+  .block-row{
+    border-top:1px solid var(--line-dark); padding-top:14px;
+  }
+  .block-row-head{
+    display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;
+  }
+  .block-row-head .name{ font-weight:600; font-size:14.5px; }
+  .block-row-head .frac{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:#B9C4A9; }
+  .block-bar-track{ height:6px; background:#3A4A38; border-radius:3px; overflow:hidden; margin-bottom:8px; }
+  .block-bar-fill{ height:100%; background:var(--olive); border-radius:3px; }
+  .block-note{ font-size:13px; color:#B9C4A9; line-height:1.45; }
+
+  .cta-box{
+    background:var(--paper); color:var(--ink);
+    border-radius:4px; padding:34px 32px;
+    max-width:560px; margin:0 auto; text-align:center;
+  }
+  .cta-box p{ font-size:15px; line-height:1.55; margin-bottom:20px; color:var(--ink-soft); }
+  .cta-box .btn-primary{ display:inline-block; }
+  .cta-foot{ margin-top:16px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); }
+
+  .restart-row{ text-align:center; margin-top:30px; }
+  .restart-row button{ background:none; color:#8A9480; font-size:12.5px; text-decoration:underline; text-underline-offset:3px; }
+
+  @media (max-width:560px){
+    .q-answers{ flex-direction:column; }
+    .meta-row{ flex-wrap:wrap; gap:14px 22px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Formulário estático oculto — necessário para o Netlify detectar os campos no build.
+     Não é exibido; o envio real acontece via JS (fetch) na tela de captura. -->
+<form name="diagnostico-carteira-viva" data-netlify="true" netlify-honeypot="bot-field" hidden>
+  <input type="text" name="nome" />
+  <input type="text" name="whatsapp" />
+  <input type="text" name="pontuacao" />
+  <input type="text" name="faixa" />
+  <input type="text" name="bloco_visibilidade" />
+  <input type="text" name="bloco_gestao" />
+  <input type="text" name="bloco_crescimento" />
+  <input type="text" name="respostas_detalhadas" />
+  <input name="bot-field" />
+</form>
+
+<!-- ============ INTRO ============ -->
+<div class="screen active" id="intro">
+  <svg class="pulse-bg" viewBox="0 0 800 300" preserveAspectRatio="none">
+    <polyline points="0,150 140,150 165,60 195,230 225,150 800,150" fill="none" stroke="#8AA624" stroke-width="2"/>
+  </svg>
+  <div class="intro-inner">
+    <div class="eyebrow">Método Carteira Viva</div>
+    <h1>Sua carteira de clientes está viva — <em>ou só está no cadastro?</em></h1>
+    <p class="lede">13 perguntas objetivas para descobrir o que sua base de clientes está tentando te dizer. Leva 3 minutos. O resultado, você não vai esquecer.</p>
+    <div class="meta-row">
+      <div><span class="dot"></span>13 perguntas</div>
+      <div><span class="dot"></span>3 minutos</div>
+      <div><span class="dot"></span>Resultado imediato</div>
+    </div>
+    <button class="btn-primary" onclick="startQuiz()">Começar diagnóstico →</button>
+  </div>
+  <div class="intro-foot">
+    <span class="brand-mark">Sabrine Bilibio Consultoria</span>
+    <span class="brand-mark">Estrutura que gera resultado</span>
+  </div>
+</div>
+
+<!-- ============ QUESTION ============ -->
+<div class="screen" id="question">
+  <div class="q-card">
+    <div class="q-topline">
+      <span class="eyebrow" id="q-block-label">BLOCO 1 · VISIBILIDADE DA CARTEIRA</span>
+      <span class="progress-label" id="q-progress-label">Pergunta 1 de 13</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="q-text" id="q-text">—</div>
+    <div class="q-answers" id="q-answers"></div>
+    <div class="insight-box" id="insight-box"></div>
+    <div class="q-nav">
+      <button class="link-btn" id="back-btn" onclick="prevQuestion()">← Voltar</button>
+      <button class="btn-continue" id="continue-btn" onclick="nextQuestion()">Continuar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CAPTURE ============ -->
+<div class="screen" id="capture">
+  <div class="q-card">
+    <div class="eyebrow" style="color:var(--olive-dark); margin-bottom:16px;">Última etapa</div>
+    <div class="q-text" style="font-size:26px;">Seu resultado está pronto. Pra onde eu mando?</div>
+    <p style="font-size:14.5px; color:var(--ink-soft); margin-bottom:28px; line-height:1.5;">Preenche rapidinho pra ver sua pontuação agora — sem spam, só o resultado.</p>
+    <div style="margin-bottom:16px;">
+      <input type="text" id="cap-nome" placeholder="Seu nome" style="width:100%; padding:14px 16px; font-size:15px; border:1.5px solid var(--line); border-radius:3px; font-family:'Inter',sans-serif; margin-bottom:12px;">
+      <input type="text" id="cap-whats" placeholder="WhatsApp (com DDD)" style="width:100%; padding:14px 16px; font-size:15px; border:1.5px solid var(--line); border-radius:3px; font-family:'Inter',sans-serif;">
+    </div>
+    <div id="cap-error" style="color:var(--brick); font-size:13px; margin-bottom:14px; display:none;">Preenche os dois campos pra continuar.</div>
+    <button class="btn-primary" style="width:100%; text-align:center;" onclick="submitCapture()" id="cap-submit-btn">Ver meu resultado →</button>
+  </div>
+</div>
+
+<!-- ============ RESULTS ============ -->
+<div class="screen" id="results">
+  <div class="res-inner">
+    <div class="eyebrow">Resultado do Diagnóstico</div>
+    <div class="score-block">
+      <div class="score-num" id="score-num">0%</div>
+      <div class="score-band" id="score-band">—</div>
+    </div>
+    <div class="pulse-wrap" id="pulse-wrap"></div>
+    <p class="verdict" id="verdict">—</p>
+
+    <div class="blocks-grid" id="blocks-grid"></div>
+
+    <div class="cta-box">
+      <p>Esse diagnóstico usa a mesma régua que aplico com clientes de indústria, distribuidora e atacado dentro do Método Carteira Viva. O resultado acima é o ponto de partida — não o problema todo.</p>
+      <a class="btn-primary" href="mailto:consultoria@sabrinebilibio.com.br?subject=Quero%20entender%20meu%20diagn%C3%B3stico%20Carteira%20Viva" style="text-decoration:none;">Quero entender meu resultado</a>
+      <div class="cta-foot">consultoria@sabrinebilibio.com.br</div>
+    </div>
+
+    <div class="restart-row"><button onclick="restartQuiz()">Refazer o diagnóstico</button></div>
+  </div>
+</div>
+
+<script>
+const BLOCKS = [
+  {
+    id:'A', label:'BLOCO 1 · VISIBILIDADE DA CARTEIRA',
+    name:'Visibilidade da Carteira',
+    questions:[
+      { text:"Você sabe exatamente quanto os seus 5 melhores clientes compraram nos últimos 6 meses?", healthy:'sim',
+        insight:"Sem esse número, é impossível saber se seu melhor cliente está comprando mais — ou já começou a te abandonar." },
+      { text:"Alguém da sua equipe entra em contato quando um cliente sai do padrão normal de compra?", healthy:'sim',
+        insight:"A maioria das empresas só percebe a queda de um cliente grande quando ele já foi embora — e aí é tarde.",
+        dontKnow:{ insight:"Não saber é o sintoma mais comum — e mais caro. Se ninguém sabe dizer se isso acontece, é sinal de que não existe processo, só boa vontade individual." } },
+      { text:"Você sabe quantos clientes pararam de comprar da sua empresa nos últimos 6 meses?", healthy:'sim',
+        insight:"Cliente que some não manda aviso. Se ninguém está contando, ninguém está vendo o buraco crescer." },
+      { text:"Você já perdeu um cliente importante e só percebeu quando ele avisou que ia parar de comprar?", healthy:'nao',
+        insight:"Descobrir a perda pela boca do cliente é o sintoma mais caro de uma carteira sem monitoramento." },
+      { text:"Você consegue dizer, com um número, quanto sua empresa está deixando de faturar por falta de acompanhamento da carteira?", healthy:'sim',
+        insight:"Empresas que nunca mediram isso costumam se surpreender — o valor parado é quase sempre maior do que imaginam." },
+    ]
+  },
+  {
+    id:'B', label:'BLOCO 2 · GESTÃO E ROTINA DA EQUIPE',
+    name:'Gestão e Rotina da Equipe',
+    questions:[
+      { text:"Sua equipe trabalha com meta diária de atividade (contatos, propostas), além da meta mensal de faturamento?", healthy:'sim',
+        insight:"Meta só de faturamento no fim do mês é tarde demais para corrigir o rumo. Meta diária é o que permite ajustar o percurso." },
+      { text:"Existe alguém, além de você, que cobra resultado da equipe comercial todos os dias?", healthy:'sim',
+        insight:"Se a cobrança depende só de você, sua empresa não tem gestão comercial — tem a sua presença." },
+      { text:"Sua equipe segue um roteiro de abordagem definido, em vez de cada um vender do seu próprio jeito?", healthy:'sim',
+        insight:"Quando o resultado depende do talento individual de cada vendedor, a empresa nunca sabe o que vai vender no mês que vem.",
+        dontKnow:{ insight:"Se você não sabe se existe um roteiro, é bem provável que a venda dependa inteiramente do que cada vendedor decide fazer sozinho." } },
+      { text:"Se um vendedor saísse da empresa amanhã, você saberia exatamente quais clientes ficariam sem atendimento?", healthy:'sim',
+        insight:"Carteira que mora só na cabeça do vendedor é um risco que a maioria dos donos só percebe tarde demais." },
+      { text:"Sua equipe sabe, sem perguntar a você, o que precisa fazer hoje para bater a meta do mês?", healthy:'sim',
+        insight:"Se a equipe precisa perguntar a você todo dia, você ainda é o gerente comercial da empresa — mesmo sem querer ser." },
+    ]
+  },
+  {
+    id:'C', label:'BLOCO 3 · CRESCIMENTO E PROSPECÇÃO',
+    name:'Crescimento e Prospecção',
+    questions:[
+      { text:"Você sabe qual é a taxa de conversão da sua equipe — de cada 10 contatos, quantos viram venda?", healthy:'sim',
+        insight:"Sem esse número, é impossível saber se o problema está no volume de contato ou na qualidade da abordagem." },
+      { text:"Existe uma rotina de prospecção de clientes novos, mesmo quando a carteira atual está vendendo bem?", healthy:'sim',
+        insight:"Prospecção que só acontece quando o caixa aperta sempre chega atrasada.",
+        dontKnow:{ insight:"Rotina que ninguém sabe dizer se existe, na prática, não existe — ela só aparece quando alguém lembra." } },
+      { text:"Sua equipe recebe treinamento de vendas com alguma frequência — não foi só uma vez?", healthy:'sim',
+        insight:"Treinamento único vira lembrança. Sem repetição e cobrança, a nova postura evapora em poucas semanas." },
+    ]
+  },
+];
+
+const ALL_QUESTIONS = BLOCKS.flatMap((b, bi) => b.questions.map(q => ({...q, blockIndex:bi})));
+const TOTAL = ALL_QUESTIONS.length;
+
+let current = 0;
+let answers = new Array(TOTAL).fill(null);
+let pendingAnswer = null;
+
+function show(screenId){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+}
+
+function startQuiz(){
+  current = 0;
+  answers = new Array(TOTAL).fill(null);
+  show('question');
+  renderQuestion();
+}
+
+function currentBlockLocalIndex(){
+  let idx = current;
+  for(const b of BLOCKS){
+    if(idx < b.questions.length) return idx;
+    idx -= b.questions.length;
+  }
+  return 0;
+}
+
+function renderQuestion(){
+  const q = ALL_QUESTIONS[current];
+  const block = BLOCKS[q.blockIndex];
+  document.getElementById('q-block-label').textContent = block.label;
+  document.getElementById('q-progress-label').textContent = `Pergunta ${current+1} de ${TOTAL}`;
+  document.getElementById('progress-fill').style.width = `${(current/TOTAL)*100}%`;
+  document.getElementById('q-text').textContent = q.text;
+
+  const btnDefs = [
+    {key:'A', label:'Sim', val:'sim'},
+    {key:'B', label:'Não', val:'nao'},
+  ];
+  if(q.dontKnow){ btnDefs.push({key:'C', label:'Não sei', val:'naosei'}); }
+  const container = document.getElementById('q-answers');
+  container.innerHTML = btnDefs.map(b =>
+    `<button class="ans-btn" data-val="${b.val}" onclick="selectAnswer('${b.val}')"><span class="k">${b.key}</span>${b.label}</button>`
+  ).join('');
+
+  document.getElementById('insight-box').classList.remove('show');
+  document.getElementById('continue-btn').classList.remove('show');
+  document.getElementById('back-btn').style.visibility = current === 0 ? 'hidden' : 'visible';
+
+  pendingAnswer = answers[current];
+  if(pendingAnswer){
+    const btn = container.querySelector(`[data-val="${pendingAnswer}"]`);
+    if(btn) btn.classList.add('selected');
+    revealInsight(q, pendingAnswer);
+    document.getElementById('continue-btn').classList.add('show');
+  }
+}
+
+function revealInsight(q, val){
+  const box = document.getElementById('insight-box');
+  const text = (val === 'naosei' && q.dontKnow) ? q.dontKnow.insight : q.insight;
+  box.innerHTML = `<b>Por que isso importa:</b> ${text}`;
+  box.classList.add('show');
+}
+
+function selectAnswer(val){
+  const q = ALL_QUESTIONS[current];
+  answers[current] = val;
+  document.querySelectorAll('#q-answers .ans-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.val === val);
+  });
+  revealInsight(q, val);
+  document.getElementById('continue-btn').classList.add('show');
+}
+
+function nextQuestion(){
+  if(answers[current] === null) return;
+  if(current < TOTAL - 1){
+    current++;
+    renderQuestion();
+  } else {
+    finishQuiz();
+  }
+}
+
+function prevQuestion(){
+  if(current === 0) return;
+  current--;
+  renderQuestion();
+}
+
+let lastPct = 0;
+let lastBlockScores = null;
+
+function finishQuiz(){
+  let score = 0;
+  const blockScores = BLOCKS.map(b => ({max:b.questions.length, got:0, name:b.name}));
+  ALL_QUESTIONS.forEach((q, i) => {
+    const ok = answers[i] === q.healthy;
+    if(ok){ score++; blockScores[q.blockIndex].got++; }
+  });
+  lastPct = Math.round((score/TOTAL)*100);
+  lastBlockScores = blockScores;
+  show('capture');
+}
+
+function encodeForm(data){
+  return Object.keys(data).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(data[k])).join('&');
+}
+
+function submitCapture(){
+  const nome = document.getElementById('cap-nome').value.trim();
+  const whats = document.getElementById('cap-whats').value.trim();
+  if(!nome || !whats){
+    document.getElementById('cap-error').style.display = 'block';
+    return;
+  }
+  document.getElementById('cap-error').style.display = 'none';
+  document.getElementById('cap-submit-btn').textContent = 'Enviando...';
+
+  const band = bandFor(lastPct);
+  const respostasDetalhadas = ALL_QUESTIONS.map((q,i) => `${i+1}. ${q.text} => ${answers[i]}`).join(' | ');
+
+  const payload = {
+    'form-name':'diagnostico-carteira-viva',
+    nome: nome,
+    whatsapp: whats,
+    pontuacao: lastPct + '%',
+    faixa: band.label,
+    bloco_visibilidade: `${lastBlockScores[0].got}/${lastBlockScores[0].max}`,
+    bloco_gestao: `${lastBlockScores[1].got}/${lastBlockScores[1].max}`,
+    bloco_crescimento: `${lastBlockScores[2].got}/${lastBlockScores[2].max}`,
+    respostas_detalhadas: respostasDetalhadas,
+  };
+
+  fetch('/', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: encodeForm(payload),
+  })
+  .catch(() => { /* segue mesmo se o envio falhar (ex: rodando local sem Netlify) */ })
+  .finally(() => {
+    renderResults(lastPct, lastBlockScores);
+    show('results');
+  });
+}
+
+function bandFor(pct){
+  if(pct <= 30) return {
+    key:'critico', label:'CRÍTICO', color:'#A23B2E',
+    verdict:"Sua carteira está viva no papel, mas perdeu o pulso na prática. Isso significa dinheiro saindo da sua empresa todos os meses, sem que ninguém veja o motivo."
+  };
+  if(pct <= 55) return {
+    key:'pontocego', label:'PONTO CEGO', color:'#C97A2B',
+    verdict:"Você sente que algo não está certo — e está certo. Existem sinais de vida na operação, mas não existe controle real. O risco aqui não é falta de esforço, é falta de visibilidade."
+  };
+  if(pct <= 80) return {
+    key:'construcao', label:'EM CONSTRUÇÃO', color:'#8AA624',
+    verdict:"Sua carteira tem sinais vitais mais fortes que a maioria — mas o pulso ainda depende de você estar por perto. O que acontece com esse resultado se você tirar uma semana de férias?"
+  };
+  return {
+    key:'estruturado', label:'ESTRUTURADO', color:'#8AA624',
+    verdict:"Poucas empresas do seu porte chegam a esse nível sozinhas. Mesmo assim, vale a pergunta: esse resultado se sustenta se você sair de cena por um mês inteiro?"
+  };
+}
+
+function pulsePath(key){
+  const paths = {
+    critico:"M0,60 L120,60 L140,58 L160,62 L180,60 L620,60 L640,45 L655,75 L670,60 L800,60",
+    pontocego:"M0,60 L100,60 L120,45 L135,75 L150,60 L340,60 L360,40 L375,80 L390,60 L560,60 L580,42 L595,78 L610,60 L800,60",
+    construcao:"M0,60 L70,60 L90,30 L105,90 L120,60 L260,60 L280,25 L295,95 L310,60 L450,60 L470,28 L485,92 L500,60 L640,60 L660,25 L675,95 L690,60 L800,60",
+    estruturado:"M0,60 L50,60 L65,15 L80,105 L95,60 L200,60 L215,10 L230,110 L245,60 L350,60 L365,12 L380,108 L395,60 L500,60 L515,15 L530,105 L545,60 L650,60 L665,12 L680,108 L695,60 L800,60"
+  };
+  return paths[key] || paths.pontocego;
+}
+
+function renderResults(pct, blockScores){
+  const band = bandFor(pct);
+  document.getElementById('score-num').textContent = pct + '%';
+  document.getElementById('score-num').style.color = band.color;
+  const bandEl = document.getElementById('score-band');
+  bandEl.textContent = band.label;
+  bandEl.style.color = band.color;
+  document.getElementById('verdict').textContent = band.verdict;
+
+  document.getElementById('pulse-wrap').innerHTML = `
+    <svg viewBox="0 0 800 120" preserveAspectRatio="none">
+      <polyline points="${pathToPoints(pulsePath(band.key))}" fill="none" stroke="${band.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+  const grid = document.getElementById('blocks-grid');
+  grid.innerHTML = '';
+  const notes = {
+    'Visibilidade da Carteira': 'Se esse número for baixo, você está perdendo dinheiro sem saber onde.',
+    'Gestão e Rotina da Equipe': 'Se esse número for baixo, o resultado comercial ainda depende só de você.',
+    'Crescimento e Prospecção': 'Se esse número for baixo, sua empresa só cresce quando alguém força.'
+  };
+  blockScores.forEach(b => {
+    const rowPct = Math.round((b.got/b.max)*100);
+    const row = document.createElement('div');
+    row.className = 'block-row';
+    row.innerHTML = `
+      <div class="block-row-head">
+        <span class="name">${b.name}</span>
+        <span class="frac">${b.got}/${b.max}</span>
+      </div>
+      <div class="block-bar-track"><div class="block-bar-fill" style="width:${rowPct}%"></div></div>
+      <div class="block-note">${notes[b.name]}</div>
+    `;
+    grid.appendChild(row);
+  });
+}
+
+// Convert a simple polyline-like path "M x,y L x,y L x,y..." into points string for <polyline>
+function pathToPoints(d){
+  return d.replace(/M|L/g,'').trim().split(/\s+/).join(' ');
+}
+
+function restartQuiz(){
+  document.getElementById('cap-nome').value = '';
+  document.getElementById('cap-whats').value = '';
+  document.getElementById('cap-error').style.display = 'none';
+  document.getElementById('cap-submit-btn').textContent = 'Ver meu resultado →';
+  show('intro');
+}
+</script>
+</body>
+</html>
