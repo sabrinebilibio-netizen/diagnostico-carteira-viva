@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- saved from url=(0062)file:///C:/Users/HP/Downloads/diagnostico-carteira-viva_4.html -->
-<html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Diagnóstico Carteira Viva</title>
-<link rel="preconnect" href="https://fonts.googleapis.com/">
-<link href="./Diagnóstico Carteira Viva_files/css2" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#F6F3EA;
@@ -108,6 +108,12 @@
 
   /* ---------- QUESTION ---------- */
   #question{
+    background:var(--paper);
+    justify-content:center;
+    align-items:center;
+    padding:6vh 6vw;
+  }
+  #capture{
     background:var(--paper);
     justify-content:center;
     align-items:center;
@@ -260,10 +266,24 @@
 </head>
 <body>
 
+<!-- Formulário estático oculto — necessário para o Netlify detectar os campos no build.
+     Não é exibido; o envio real acontece via JS (fetch) na tela de captura. -->
+<form name="diagnostico-carteira-viva" data-netlify="true" netlify-honeypot="bot-field" hidden>
+  <input type="text" name="nome" />
+  <input type="text" name="whatsapp" />
+  <input type="text" name="pontuacao" />
+  <input type="text" name="faixa" />
+  <input type="text" name="bloco_visibilidade" />
+  <input type="text" name="bloco_gestao" />
+  <input type="text" name="bloco_crescimento" />
+  <input type="text" name="respostas_detalhadas" />
+  <input name="bot-field" />
+</form>
+
 <!-- ============ INTRO ============ -->
 <div class="screen active" id="intro">
   <svg class="pulse-bg" viewBox="0 0 800 300" preserveAspectRatio="none">
-    <polyline points="0,150 140,150 165,60 195,230 225,150 800,150" fill="none" stroke="#8AA624" stroke-width="2"></polyline>
+    <polyline points="0,150 140,150 165,60 195,230 225,150 800,150" fill="none" stroke="#8AA624" stroke-width="2"/>
   </svg>
   <div class="intro-inner">
     <div class="eyebrow">Método Carteira Viva</div>
@@ -297,6 +317,21 @@
       <button class="link-btn" id="back-btn" onclick="prevQuestion()">← Voltar</button>
       <button class="btn-continue" id="continue-btn" onclick="nextQuestion()">Continuar →</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ CAPTURE ============ -->
+<div class="screen" id="capture">
+  <div class="q-card">
+    <div class="eyebrow" style="color:var(--olive-dark); margin-bottom:16px;">Última etapa</div>
+    <div class="q-text" style="font-size:26px;">Seu resultado está pronto. Pra onde eu mando?</div>
+    <p style="font-size:14.5px; color:var(--ink-soft); margin-bottom:28px; line-height:1.5;">Preenche rapidinho pra ver sua pontuação agora — sem spam, só o resultado.</p>
+    <div style="margin-bottom:16px;">
+      <input type="text" id="cap-nome" placeholder="Seu nome" style="width:100%; padding:14px 16px; font-size:15px; border:1.5px solid var(--line); border-radius:3px; font-family:'Inter',sans-serif; margin-bottom:12px;">
+      <input type="text" id="cap-whats" placeholder="WhatsApp (com DDD)" style="width:100%; padding:14px 16px; font-size:15px; border:1.5px solid var(--line); border-radius:3px; font-family:'Inter',sans-serif;">
+    </div>
+    <div id="cap-error" style="color:var(--brick); font-size:13px; margin-bottom:14px; display:none;">Preenche os dois campos pra continuar.</div>
+    <button class="btn-primary" style="width:100%; text-align:center;" onclick="submitCapture()" id="cap-submit-btn">Ver meu resultado →</button>
   </div>
 </div>
 
@@ -466,6 +501,9 @@ function prevQuestion(){
   renderQuestion();
 }
 
+let lastPct = 0;
+let lastBlockScores = null;
+
 function finishQuiz(){
   let score = 0;
   const blockScores = BLOCKS.map(b => ({max:b.questions.length, got:0, name:b.name}));
@@ -473,9 +511,50 @@ function finishQuiz(){
     const ok = answers[i] === q.healthy;
     if(ok){ score++; blockScores[q.blockIndex].got++; }
   });
-  const pct = Math.round((score/TOTAL)*100);
-  renderResults(pct, blockScores);
-  show('results');
+  lastPct = Math.round((score/TOTAL)*100);
+  lastBlockScores = blockScores;
+  show('capture');
+}
+
+function encodeForm(data){
+  return Object.keys(data).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(data[k])).join('&');
+}
+
+function submitCapture(){
+  const nome = document.getElementById('cap-nome').value.trim();
+  const whats = document.getElementById('cap-whats').value.trim();
+  if(!nome || !whats){
+    document.getElementById('cap-error').style.display = 'block';
+    return;
+  }
+  document.getElementById('cap-error').style.display = 'none';
+  document.getElementById('cap-submit-btn').textContent = 'Enviando...';
+
+  const band = bandFor(lastPct);
+  const respostasDetalhadas = ALL_QUESTIONS.map((q,i) => `${i+1}. ${q.text} => ${answers[i]}`).join(' | ');
+
+  const payload = {
+    'form-name':'diagnostico-carteira-viva',
+    nome: nome,
+    whatsapp: whats,
+    pontuacao: lastPct + '%',
+    faixa: band.label,
+    bloco_visibilidade: `${lastBlockScores[0].got}/${lastBlockScores[0].max}`,
+    bloco_gestao: `${lastBlockScores[1].got}/${lastBlockScores[1].max}`,
+    bloco_crescimento: `${lastBlockScores[2].got}/${lastBlockScores[2].max}`,
+    respostas_detalhadas: respostasDetalhadas,
+  };
+
+  fetch('/', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: encodeForm(payload),
+  })
+  .catch(() => { /* segue mesmo se o envio falhar (ex: rodando local sem Netlify) */ })
+  .finally(() => {
+    renderResults(lastPct, lastBlockScores);
+    show('results');
+  });
 }
 
 function bandFor(pct){
@@ -550,9 +629,12 @@ function pathToPoints(d){
 }
 
 function restartQuiz(){
+  document.getElementById('cap-nome').value = '';
+  document.getElementById('cap-whats').value = '';
+  document.getElementById('cap-error').style.display = 'none';
+  document.getElementById('cap-submit-btn').textContent = 'Ver meu resultado →';
   show('intro');
 }
 </script>
-
-
-</body></html>
+</body>
+</html>
